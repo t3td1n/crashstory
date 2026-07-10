@@ -2,6 +2,7 @@ import streamlit as st
 import hashlib
 import hmac
 import pandas as pd
+from collections import Counter
 
 st.set_page_config(
     page_title="Crashtory",
@@ -28,6 +29,16 @@ rounds = st.number_input(
     value=1000
 )
 
+show_hashes = st.checkbox(
+    "Show Hashes",
+    value=True
+)
+
+show_stats = st.checkbox(
+    "Show Statistics",
+    value=True
+)
+
 
 def calculate_multiplier(hash_value, seed_value):
     digest = hmac.new(
@@ -36,15 +47,12 @@ def calculate_multiplier(hash_value, seed_value):
         hashlib.sha256
     ).hexdigest()
 
-    first_8 = digest[:8]
-    decimal_value = int(first_8, 16)
+    value = int(digest[:8], 16)
 
-    result = (
+    return (
         (2 ** 32) /
-        (decimal_value + 1)
+        (value + 1)
     ) * 0.99
-
-    return result
 
 
 if st.button("Generate"):
@@ -60,6 +68,7 @@ if st.button("Generate"):
     current_hash = latest_hash.strip().lower()
 
     data = []
+    multipliers = []
 
     progress = st.progress(0)
 
@@ -70,13 +79,13 @@ if st.button("Generate"):
             seed
         )
 
-        data.append(
-            {
-                "Round": i + 1,
-                "Hash": current_hash,
-                "Multiplier": f"{int(multiplier * 100) / 100:.2f}x"
-            }
-        )
+        multipliers.append(multiplier)
+
+        data.append({
+            "Round": i + 1,
+            "Hash": current_hash,
+            "Multiplier": f"{int(multiplier * 100) / 100:.2f}x"
+        })
 
         current_hash = hashlib.sha256(
             current_hash.encode()
@@ -88,6 +97,9 @@ if st.button("Generate"):
             )
 
     df = pd.DataFrame(data)
+
+    if not show_hashes:
+        df = df.drop(columns=["Hash"])
 
     def color_multiplier(val):
         num = float(str(val).replace("x", ""))
@@ -105,6 +117,100 @@ if st.button("Generate"):
     st.success(
         f"Generated {len(df):,} historical outputs"
     )
+
+    if show_stats:
+
+        st.header("📊 Statistics")
+
+        avg_multiplier = sum(multipliers) / len(multipliers)
+        highest_multiplier = max(multipliers)
+        median_multiplier = sorted(multipliers)[
+            len(multipliers) // 2
+        ]
+
+        hit_2x = sum(1 for x in multipliers if x >= 2)
+        hit_10x = sum(1 for x in multipliers if x >= 10)
+        hit_100x = sum(1 for x in multipliers if x >= 100)
+
+        col1, col2, col3 = st.columns(3)
+
+        with col1:
+            st.metric(
+                "Average Multiplier",
+                f"{avg_multiplier:.2f}x"
+            )
+
+            st.metric(
+                "Median Multiplier",
+                f"{median_multiplier:.2f}x"
+            )
+
+        with col2:
+            st.metric(
+                "Highest Multiplier",
+                f"{highest_multiplier:.2f}x"
+            )
+
+            st.metric(
+                "Hit Rate ≥2x",
+                f"{(hit_2x / len(multipliers)) * 100:.2f}%"
+            )
+
+        with col3:
+            st.metric(
+                "Hit Rate ≥10x",
+                f"{(hit_10x / len(multipliers)) * 100:.2f}%"
+            )
+
+            st.metric(
+                "Hit Rate ≥100x",
+                f"{(hit_100x / len(multipliers)) * 100:.2f}%"
+            )
+
+        st.subheader("🔥 < 2x Streak Analysis")
+
+        streaks = []
+        current_streak = 0
+
+        for value in multipliers:
+
+            if value < 2:
+                current_streak += 1
+            else:
+
+                if current_streak > 0:
+                    streaks.append(current_streak)
+
+                current_streak = 0
+
+        if current_streak > 0:
+            streaks.append(current_streak)
+
+        if streaks:
+
+            streak_counter = Counter(streaks)
+
+            streak_df = pd.DataFrame(
+                sorted(
+                    streak_counter.items()
+                ),
+                columns=[
+                    "Streak Length",
+                    "Occurrences"
+                ]
+            )
+
+            st.dataframe(
+                streak_df,
+                use_container_width=True
+            )
+
+            st.metric(
+                "Maximum <2x Streak",
+                max(streaks)
+            )
+
+    st.header("📜 Historical Outputs")
 
     st.write(styled_df)
 
