@@ -74,7 +74,7 @@ if st.button("Generate"):
             {
                 "Round": i + 1,
                 "Hash": current_hash,
-                "Multiplier": f"{multiplier:.2f}x"
+                "Multiplier": f"{int(multiplier * 100) / 100:.2f}x"
             }
         )
 
