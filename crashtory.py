@@ -30,11 +30,6 @@ rounds = st.number_input(
 
 
 def calculate_multiplier(hash_value, seed_value):
-    """
-    Stake formula based on your verification page:
-    HMAC_SHA256(hash, seed)
-    """
-
     digest = hmac.new(
         hash_value.encode(),
         seed_value.encode(),
@@ -79,11 +74,10 @@ if st.button("Generate"):
             {
                 "Round": i + 1,
                 "Hash": current_hash,
-                "Multiplier": round(multiplier, 8)
+                "Multiplier": f"{multiplier:.2f}x"
             }
         )
 
-        # Older round
         current_hash = hashlib.sha256(
             current_hash.encode()
         ).hexdigest()
@@ -95,14 +89,24 @@ if st.button("Generate"):
 
     df = pd.DataFrame(data)
 
+    def color_multiplier(val):
+        num = float(str(val).replace("x", ""))
+
+        if num >= 2:
+            return "color: #00ff66; font-weight: bold;"
+        else:
+            return "color: gray;"
+
+    styled_df = df.style.map(
+        color_multiplier,
+        subset=["Multiplier"]
+    )
+
     st.success(
         f"Generated {len(df):,} historical outputs"
     )
 
-    st.dataframe(
-        df,
-        use_container_width=True
-    )
+    st.write(styled_df)
 
     csv = df.to_csv(
         index=False
