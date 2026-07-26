@@ -4,23 +4,30 @@ import hmac
 import pandas as pd
 import math
 from datetime import datetime, timedelta
+from collections import Counter
 
 st.set_page_config(
-    page_title="Crashtory V3",
+    page_title="Crashtory V3.1",
     layout="wide"
 )
 
-st.title("🎲 Crashtory V3")
-st.subheader("Stake Crash Historical Generator With Estimated Timestamps")
-
-seed = st.text_input(
-    "Seed",
-    placeholder="Enter seed"
+st.title("🎲 Crashtory V3.1")
+st.subheader(
+    "Stake Crash Historical Generator With Estimated Timestamps"
 )
+
+# ------------------------------------
+# INPUTS
+# ------------------------------------
 
 latest_hash = st.text_input(
     "Latest Hash",
     placeholder="Enter latest hash"
+)
+
+seed = st.text_input(
+    "Seed",
+    placeholder="Enter seed"
 )
 
 st.subheader("🕒 Reference Timestamp")
@@ -51,13 +58,17 @@ rounds = st.number_input(
 
 show_hashes = st.checkbox(
     "Show Hashes",
-    value=True
+    value=Fales
 )
 
 show_stats = st.checkbox(
     "Show Statistics",
     value=True
 )
+
+# ------------------------------------
+# FUNCTIONS
+# ------------------------------------
 
 def calculate_multiplier(
     hash_value,
@@ -75,45 +86,81 @@ def calculate_multiplier(
     )
 
     return (
-        (2 ** 32) /
+        (2 ** 32)
+        /
         (value + 1)
     ) * 0.99
+
 
 def estimate_round_duration(
     multiplier
 ):
     """
-    Estimated round duration
-    in seconds.
+    Improved estimate based on
+    observed Stake timing.
     """
 
-    if multiplier <= 1:
-        return 10
+    base_time = 18
 
-    return max(
-        10,
-        12 + (
-            6 *
-            math.log(
-                multiplier
+    growth_time = (
+        8 *
+        math.log(
+            max(
+                multiplier,
+                1
             )
         )
     )
 
-if st.button(
-    "Generate"
-):
+    return (
+        base_time +
+        growth_time
+    )
 
-    if not seed.strip():
-        st.error(
-            "Seed is required."
+
+def color_multiplier(val):
+
+    try:
+
+        num = float(
+            str(val)
+            .replace("x", "")
         )
-        st.stop()
+
+        if num >= 2:
+
+            return (
+                "color:#00ff66;"
+                "font-weight:bold;"
+            )
+
+        return "color:gray;"
+
+    except:
+
+        return ""
+
+
+# ------------------------------------
+# GENERATE
+# ------------------------------------
+
+if st.button("Generate"):
 
     if not latest_hash.strip():
+
         st.error(
             "Latest Hash is required."
         )
+
+        st.stop()
+
+    if not seed.strip():
+
+        st.error(
+            "Seed is required."
+        )
+
         st.stop()
 
     parsed_timestamp = datetime.combine(
@@ -132,13 +179,10 @@ if st.button(
     data = []
     multipliers = []
 
-    progress = st.progress(
-        0
-    )
+    progress = st.progress(0)
 
-    for i in range(
-        rounds
-    ):
+    for i in range(rounds):
+
         multiplier = (
             calculate_multiplier(
                 current_hash,
@@ -167,23 +211,17 @@ if st.button(
             )
 
             current_time -= timedelta(
-                seconds=
-                duration_seconds
+                seconds=duration_seconds
             )
 
         data.append(
             {
-                "Round":
-                    i + 1,
-
-                "Timestamp":
-                    timestamp_value,
-
-                "Hash":
-                    current_hash,
-
-                "Multiplier":
+                "Round": i + 1,
+                "Timestamp": timestamp_value,
+                "Hash": current_hash,
+                "Multiplier": (
                     f"{int(multiplier * 100) / 100:.2f}x"
+                )
             }
         )
 
@@ -201,7 +239,9 @@ if st.button(
 
             progress.progress(
                 min(
-                    (i + 1) / rounds,
+                    (i + 1)
+                    /
+                    rounds,
                     1.0
                 )
             )
@@ -211,13 +251,23 @@ if st.button(
     )
 
     if not show_hashes:
+
         df = df.drop(
             columns=["Hash"]
         )
 
+    styled_df = df.style.map(
+        color_multiplier,
+        subset=["Multiplier"]
+    )
+
     st.success(
         f"Generated {len(df):,} historical outputs"
     )
+
+    # --------------------------------
+    # STATISTICS
+    # --------------------------------
 
     if show_stats:
 
@@ -241,11 +291,28 @@ if st.button(
             ).median()
         )
 
-        col1, col2, col3 = st.columns(
-            3
+        hit_2x = sum(
+            1
+            for x in multipliers
+            if x >= 2
         )
 
+        hit_10x = sum(
+            1
+            for x in multipliers
+            if x >= 10
+        )
+
+        hit_100x = sum(
+            1
+            for x in multipliers
+            if x >= 100
+        )
+
+        col1, col2, col3 = st.columns(3)
+
         with col1:
+
             st.metric(
                 "Average Multiplier",
                 f"{avg_multiplier:.2f}x"
@@ -257,16 +324,32 @@ if st.button(
             )
 
         with col2:
+
             st.metric(
                 "Highest Multiplier",
                 f"{highest_multiplier:.2f}x"
             )
 
-        with col3:
             st.metric(
-                "Generated Rounds",
-                f"{len(multipliers):,}"
+                "Hit Rate ≥2x",
+                f"{(hit_2x / len(multipliers))*100:.2f}%"
             )
+
+        with col3:
+
+            st.metric(
+                "Hit Rate ≥10x",
+                f"{(hit_10x / len(multipliers))*100:.2f}%"
+            )
+
+            st.metric(
+                "Hit Rate ≥100x",
+                f"{(hit_100x / len(multipliers))*100:.2f}%"
+            )
+
+        # ----------------------------
+        # TIMELINE
+        # ----------------------------
 
         if generate_timestamps:
 
@@ -280,9 +363,7 @@ if st.button(
                 current_time
             )
 
-            c1, c2, c3 = st.columns(
-                3
-            )
+            c1, c2, c3 = st.columns(3)
 
             with c1:
 
@@ -306,21 +387,84 @@ if st.button(
 
                 st.metric(
                     "Estimated Timespan",
-                    str(
-                        timespan
-                    ).split(
-                        "."
-                    )[0]
+                    str(timespan).split(".")[0]
                 )
+
+        # ----------------------------
+        # STREAK ANALYSIS
+        # ----------------------------
+
+        st.subheader(
+            "🔥 < 2x Streak Analysis"
+        )
+
+        streaks = []
+
+        current_streak = 0
+
+        for value in multipliers:
+
+            if value < 2:
+
+                current_streak += 1
+
+            else:
+
+                if current_streak > 0:
+
+                    streaks.append(
+                        current_streak
+                    )
+
+                current_streak = 0
+
+        if current_streak > 0:
+
+            streaks.append(
+                current_streak
+            )
+
+        if streaks:
+
+            streak_counter = Counter(
+                streaks
+            )
+
+            streak_df = pd.DataFrame(
+                sorted(
+                    streak_counter.items()
+                ),
+                columns=[
+                    "Streak Length",
+                    "Occurrences"
+                ]
+            )
+
+            st.dataframe(
+                streak_df,
+                use_container_width=True
+            )
+
+            st.metric(
+                "Maximum <2x Streak",
+                max(streaks)
+            )
+
+    # --------------------------------
+    # OUTPUT TABLE
+    # --------------------------------
 
     st.header(
         "📜 Historical Outputs"
     )
 
-    st.dataframe(
-        df,
-        use_container_width=True
+    st.write(
+        styled_df
     )
+
+    # --------------------------------
+    # CSV EXPORT
+    # --------------------------------
 
     csv = (
         df.to_csv(
@@ -334,6 +478,6 @@ if st.button(
     st.download_button(
         "Download CSV",
         csv,
-        "crashtory_v3.csv",
+        "crashtory_v3_1.csv",
         "text/csv"
     )
