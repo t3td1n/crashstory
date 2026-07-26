@@ -85,10 +85,10 @@ def calculate_multiplier(
 def estimate_round_duration(
     multiplier
 ):
-    base_time = 18
+    base_time = 11
 
     growth_time = (
-        8 *
+        6 *
         math.log(
             max(multiplier, 1)
         )
@@ -98,7 +98,6 @@ def estimate_round_duration(
         base_time +
         growth_time
     )
-
 
 if st.button("Generate"):
 
