@@ -35,7 +35,8 @@ with col1:
 
 with col2:
     known_time = st.time_input(
-        "Time of Latest Hash"
+        "Time of Latest Hash",
+        step=1
     )
 
 generate_timestamps = st.checkbox(
