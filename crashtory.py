@@ -671,20 +671,3 @@ st.markdown(
     '<div class="ct-foot">CRASHTORY // END OF LINE</div>',
     unsafe_allow_html=True
 )
-File 2: theme settings (new file)
-This file makes Streamlit's built-in parts match the theme: the calendar popup, checkboxes, and table colours. Without it the app still looks themed, but those parts stay in Streamlit's default style.
-
-How to create it on GitHub:
-
-On your repo's main page, click Add file → Create new file.
-In the name box, type exactly: .streamlit/config.toml
-When you type the /, GitHub automatically turns .streamlit into a folder. That's normal.
-It must sit in the same place as your app file, usually the main (root) folder.
-Paste this in:
-[theme]
-base = "dark"
-primaryColor = "#00ff9c"
-backgroundColor = "#05080a"
-secondaryBackgroundColor = "#0b1110"
-textColor = "#b8f5d8"
-font = "monospace"
