@@ -7,11 +7,11 @@ from datetime import datetime, timedelta
 from collections import Counter
 
 st.set_page_config(
-    page_title="Crashtory V3.2",
+    page_title="Crashtory V3.3",
     layout="wide"
 )
 
-st.title("🎲 Crashtory V3.2")
+st.title("🎲 Crashtory V3.3")
 st.subheader("Stake Crash Historical Generator")
 
 latest_hash = st.text_input(
@@ -77,18 +77,16 @@ def calculate_multiplier(
         16
     )
 
-    return (
-        (2 ** 32)
-        /
-        (value + 1)
-    ) * 0.99
+    # Stake shows instant crashes as 1.00x, never below
+    return max(1.0, ((2 ** 32) / (value + 1)) * 0.99)
 
 
-# --- Duration formula, fitted and cross-validated on 3,147 real rounds ---
-# across 3 separate days (2 independent data sources: timestamp logs + JSON
-# exports). Accuracy: median error ~0.3s, 99.5% of rounds within 1 second,
-# 99.7% within 2 seconds.
-DURATION_DELAY = 11.539482707674837   # launch-pad seconds before liftoff
+# --- Duration formula ---
+# Originally fitted on 3,147 real rounds across 3 days.
+# DURATION_DELAY recalibrated on 1,041 matched real rounds (Nov 20-21, 2026):
+# the old value drifted ~0.031s per round (-32s after 1,040 rounds).
+# DURATION_K unchanged (error was constant regardless of multiplier).
+DURATION_DELAY = 11.508714            # launch-pad seconds before liftoff
 DURATION_K = 0.059885340656503055     # growth rate per second
 
 
@@ -418,6 +416,6 @@ if st.button("Generate"):
     st.download_button(
         "Download CSV",
         csv,
-        "crashtory_v3_2.csv",
+        "crashtory_v3_3.csv",
         "text/csv"
     )
